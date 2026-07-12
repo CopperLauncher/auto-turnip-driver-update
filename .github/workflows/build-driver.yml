@@ -36,10 +36,15 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y meson ninja-build clang llvm ccache python3-mako \
+          sudo apt-get install -y ninja-build clang llvm ccache python3-mako \
             python3-pip patchelf flex bison glslang-tools \
             libwayland-dev wayland-protocols libxrandr-dev libxxf86vm-dev \
             libxcb-glx0-dev libx11-xcb-dev pkg-config unzip zip curl
+          # Ubuntu 24.04's apt meson (1.3.2) is too old for current Mesa
+          # (needs >= 1.4.0). Install a current one via pip instead; it
+          # lands in /usr/local/bin, which comes before /usr/bin on PATH.
+          sudo pip3 install --break-system-packages -U meson
+          meson --version
 
       - name: Run the vendored turnip builder
         working-directory: vendor/upstream
