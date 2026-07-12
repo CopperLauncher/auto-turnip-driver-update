@@ -51,18 +51,6 @@ staying current is automatic and the history here cleanly shows exactly
 when and what changed upstream (each auto-commit references the
 upstream SHA it was pulled from).
 
-## Setup
-
-1. Upload this as a new repo (or `git init` it and push).
-2. Nothing else needed — `sync-upstream.yml` runs on its own schedule
-   (default: daily, matches upstream's release cadence loosely). You can
-   also trigger it manually from the Actions tab any time you want an
-   immediate check.
-3. First run will populate `vendor/upstream/` and commit it. Every run
-   after that only commits if something actually changed upstream.
-4. `build-driver.yml` picks up from there and builds/publishes whenever
-   `vendor/upstream/` changes.
-
 ## Configuration
 
 Edit the top of `scripts/sync-upstream.sh` to change:
