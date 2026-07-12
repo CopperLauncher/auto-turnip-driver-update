@@ -36,7 +36,7 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y meson ninja-build clang llvm python3-mako \
+          sudo apt-get install -y meson ninja-build clang llvm ccache python3-mako \
             python3-pip patchelf flex bison glslang-tools \
             libwayland-dev wayland-protocols libxrandr-dev libxxf86vm-dev \
             libxcb-glx0-dev libx11-xcb-dev pkg-config unzip zip curl
@@ -44,6 +44,15 @@ jobs:
       - name: Run the vendored turnip builder
         working-directory: vendor/upstream
         run: bash turnip_builder.sh
+
+      - name: Show build logs on failure
+        if: failure()
+        working-directory: vendor/upstream
+        run: |
+          echo "----- meson_log (tail) -----"
+          tail -n 200 turnip_workdir/meson_log 2>/dev/null || echo "(no meson_log)"
+          echo "----- ninja_log (tail) -----"
+          tail -n 200 turnip_workdir/ninja_log 2>/dev/null || echo "(no ninja_log)"
 
       - name: Locate build output
         id: artifact
