@@ -1,0 +1,91 @@
+name: Publish driver to Copper-Android
+
+# Takes the .so just built by build-driver.yml and opens a PR against
+# CopperLauncher/Copper-Android replacing the bundled Turnip binary at
+# app_pojavlauncher/src/main/jniLibs/arm64-v8a/libvulkan_freedreno.so.
+# This is the step that removes the "manually swap the binary" chore —
+# the only manual action left is clicking Merge on a PR you can review.
+
+on:
+  workflow_run:
+    workflows: ["Build driver"]
+    types: [completed]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+env:
+  TARGET_REPO: CopperLauncher/Copper-Android
+  TARGET_PATH: app_pojavlauncher/src/main/jniLibs/arm64-v8a/libvulkan_freedreno.so
+  TARGET_BRANCH: feat/freedreno
+
+jobs:
+  publish:
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout this repo (for upstream commit metadata)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Download latest driver release from this repo
+        run: |
+          gh release download --repo "${{ github.repository }}" --pattern '*.zip' --dir dl
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Extract the .so
+        run: |
+          mkdir -p extracted
+          ZIP="$(find dl -maxdepth 1 -iname '*.zip' | head -n1)"
+          unzip -o "$ZIP" -d extracted
+          SO_PATH="$(find extracted -iname 'libvulkan_freedreno.so' | head -n1)"
+          if [ -z "$SO_PATH" ]; then
+            echo "Could not find libvulkan_freedreno.so inside the release zip." >&2
+            echo "Check what turnip_builder.sh actually names/packages the driver as, and update this step." >&2
+            exit 1
+          fi
+          mkdir -p out
+          cp "$SO_PATH" out/libvulkan_freedreno.so
+
+      - name: Read synced upstream commit
+        id: upstream
+        run: |
+          SHA="$(grep upstream_commit= vendor/UPSTREAM_COMMIT.txt | cut -d= -f2)"
+          echo "sha=${SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout target repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.TARGET_REPO }}
+          ref: ${{ env.TARGET_BRANCH }}
+          token: ${{ secrets.COPPER_ANDROID_PAT }}
+          path: target-repo
+
+      - name: Drop in the new binary
+        run: |
+          mkdir -p "target-repo/$(dirname "${{ env.TARGET_PATH }}")"
+          cp out/libvulkan_freedreno.so "target-repo/${{ env.TARGET_PATH }}"
+
+      - name: Open PR against Copper-Android
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.COPPER_ANDROID_PAT }}
+          path: target-repo
+          branch: auto/turnip-driver-update
+          delete-branch: true
+          title: "Update bundled Turnip driver (upstream ${{ steps.upstream.outputs.sha }})"
+          commit-message: "chore: update libvulkan_freedreno.so (upstream ${{ steps.upstream.outputs.sha }})"
+          body: |
+            Auto-generated from [freedreno](https://github.com/${{ github.repository }}).
+
+            Rebuilds `libvulkan_freedreno.so` from
+            `MojoLauncher/freedreno_turnip-CI` @ `${{ steps.upstream.outputs.sha }}`
+            and drops it into `${{ env.TARGET_PATH }}`.
+
+            Please sanity-test on an Adreno device before merging — this
+            swaps the binary the whole app relies on for Turnip rendering.
