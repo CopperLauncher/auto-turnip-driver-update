@@ -34,23 +34,18 @@ jobs:
 
       - name: Download latest driver release from this repo
         run: |
-          gh release download --repo "${{ github.repository }}" --pattern '*.zip' --dir dl
+          mkdir -p out
+          gh release download --repo "${{ github.repository }}" \
+            --pattern 'libvulkan_freedreno.so' --dir out
         env:
           GH_TOKEN: ${{ github.token }}
 
-      - name: Extract the .so
+      - name: Verify download
         run: |
-          mkdir -p extracted
-          ZIP="$(find dl -maxdepth 1 -iname '*.zip' | head -n1)"
-          unzip -o "$ZIP" -d extracted
-          SO_PATH="$(find extracted -iname 'libvulkan_freedreno.so' | head -n1)"
-          if [ -z "$SO_PATH" ]; then
-            echo "Could not find libvulkan_freedreno.so inside the release zip." >&2
-            echo "Check what turnip_builder.sh actually names/packages the driver as, and update this step." >&2
+          test -s out/libvulkan_freedreno.so || {
+            echo "libvulkan_freedreno.so missing or empty in the latest release." >&2
             exit 1
-          fi
-          mkdir -p out
-          cp "$SO_PATH" out/libvulkan_freedreno.so
+          }
 
       - name: Read synced upstream commit
         id: upstream

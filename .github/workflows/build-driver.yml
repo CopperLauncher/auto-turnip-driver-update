@@ -63,12 +63,28 @@ jobs:
         id: artifact
         working-directory: vendor/upstream
         run: |
-          OUT="$(find . -maxdepth 1 -iname '*.zip' | head -n1)"
-          if [ -z "$OUT" ]; then
-            echo "No .zip output found from turnip_builder.sh" >&2
+          # The raw compiled .so, still under its real name, before the
+          # script renames/soname-patches it into vulkan.turnip.so /
+          # vulkan.freedreno.so for Magisk/AdrenoTools packaging. This is
+          # the exact filename Copper-Android's native loader dlopen()s.
+          RAW_SO="$(find turnip_workdir -path '*/build-android-aarch64/src/freedreno/vulkan/libvulkan_freedreno.so' | head -n1)"
+          if [ -z "$RAW_SO" ]; then
+            echo "Could not find the raw built libvulkan_freedreno.so under turnip_workdir/." >&2
+            find turnip_workdir -maxdepth 6 -iname '*.so' >&2 || true
             exit 1
           fi
-          echo "path=vendor/upstream/${OUT#./}" >> "$GITHUB_OUTPUT"
+          mkdir -p dist
+          cp "$RAW_SO" dist/libvulkan_freedreno.so
+          echo "so_path=vendor/upstream/dist/libvulkan_freedreno.so" >> "$GITHUB_OUTPUT"
+
+          # Also grab whatever packaged zips the script produced (Magisk
+          # module + AdrenoTools package), one level down in turnip_workdir,
+          # for anyone who wants those directly.
+          {
+            echo "zip_paths<<EOF"
+            find turnip_workdir -maxdepth 1 -iname '*.zip' | sed 's|^|vendor/upstream/|'
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Read synced upstream commit
         id: upstream
@@ -84,4 +100,11 @@ jobs:
           body: |
             Built automatically from vendor/upstream/turnip_builder.sh,
             synced from MojoLauncher/freedreno_turnip-CI @ ${{ steps.upstream.outputs.sha }}.
-          files: ${{ steps.artifact.outputs.path }}
+
+            - `libvulkan_freedreno.so` — raw build output, correct filename
+              for dropping straight into Copper-Android's jniLibs.
+            - the rest are the script's own Magisk module / AdrenoTools
+              packages, if you want those instead.
+          files: |
+            ${{ steps.artifact.outputs.so_path }}
+            ${{ steps.artifact.outputs.zip_paths }}
