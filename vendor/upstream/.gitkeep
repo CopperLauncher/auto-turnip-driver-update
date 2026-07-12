@@ -1,7 +1,0 @@
-This directory is auto-populated by scripts/sync-upstream.sh via the
-"Sync upstream" GitHub Actions workflow. Do not edit files here by hand —
-they get overwritten (and your edits diffed away) on the next sync run.
-
-Empty until the first workflow run. Trigger it manually from the Actions
-tab ("Sync upstream (freedreno_turnip-CI)" -> Run workflow) if you don't
-want to wait for the daily schedule.
