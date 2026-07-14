@@ -65,22 +65,3 @@ jobs:
         run: |
           mkdir -p "target-repo/$(dirname "${{ env.TARGET_PATH }}")"
           cp out/libvulkan_freedreno.so "target-repo/${{ env.TARGET_PATH }}"
-
-      - name: Open PR against Copper-Android
-        uses: peter-evans/create-pull-request@v6
-        with:
-          token: ${{ secrets.COPPER_ANDROID_PAT }}
-          path: target-repo
-          branch: auto/turnip-driver-update
-          delete-branch: true
-          title: "Update bundled Turnip driver (upstream ${{ steps.upstream.outputs.sha }})"
-          commit-message: "chore: update libvulkan_freedreno.so (upstream ${{ steps.upstream.outputs.sha }})"
-          body: |
-            Auto-generated from [freedreno](https://github.com/${{ github.repository }}).
-
-            Rebuilds `libvulkan_freedreno.so` from
-            `MojoLauncher/freedreno_turnip-CI` @ `${{ steps.upstream.outputs.sha }}`
-            and drops it into `${{ env.TARGET_PATH }}`.
-
-            Please sanity-test on an Adreno device before merging — this
-            swaps the binary the whole app relies on for Turnip rendering.
