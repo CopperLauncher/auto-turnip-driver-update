@@ -2,4 +2,4 @@
 upstream_repo=MojoLauncher/freedreno_turnip-CI
 upstream_branch=main
 upstream_commit=1f4c64a9ca5693e95578f368e16d266dd3d03351
-synced_at_utc=2026-07-20T07:58:17Z
+synced_at_utc=2026-07-21T07:32:29Z
